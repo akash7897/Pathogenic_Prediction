@@ -1,0 +1,22 @@
+# Core
+numpy
+pandas
+matplotlib
+scikit-learn
+jupyter
+
+# Deep Learning Framework
+torch
+torchvision
+torchaudio
+
+# PyTorch Geometric (GNN Framework)
+torch-geometric
+torch-scatter
+torch-sparse
+torch-cluster
+torch-spline-conv
+
+# Optional (for saving/loading models, tqdm, etc.)
+tqdm
+networkx
