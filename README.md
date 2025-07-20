@@ -30,7 +30,6 @@ Each data sample is represented as a graph saved in a format (e.g., `.pt`, `.txt
 
 - Accuracy
 - Precision & Recall
-- ROC-AUC Curve
 - Confusion Matrix
 
 Comparisons are made with baseline models like:
