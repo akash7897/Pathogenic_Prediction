@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCN2A Pathogenicity Prediction</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        header {
+            background: rgba(255, 255, 255, 0.1);
+            width: 100%;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        header h1 {
+            color: white;
+            font-size: 2.5rem;
+            margin: 0;
+        }
+        main {
+            max-width: 900px;
+            width: 90%;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            margin: 2rem 0;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1e3a8a;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        input:focus, textarea:focus, select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
+            outline: none;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.2s;
+        }
+        button:hover {
+            background: #1e3a8a;
+            transform: scale(1.05);
+        }
+        #result {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 5px;
+            background: #f9fafb;
+        }
+        .hidden {
+            display: none;
+        }
+        .error {
+            color: #dc2626;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+        #loading {
+            text-align: center;
+            padding: 1rem;
+            font-weight: bold;
+            color: #1e3a8a;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>SCN2A Pathogenicity Prediction</h1>
+    </header>
+    <main>
+        <p>Predict pathogenicity (Pathogenic or Benign) for SCN2A variants using a Graph Neural Network. Enter multiple variants or sequences with labels to view predictions.</p>
+        
+        <div class="form-group">
+            <label for="inputType">Select Input Type:</label>
+            <select id="inputType" onchange="toggleInputForm()">
+                <option value="variant">Variant Details</option>
+                <option value="sequence">Raw Sequence</option>
+            </select>
+        </div>
+
+        <form id="variantForm">
+            <div class="form-group">
+                <label for="variantInputs">Variant Details (format: chrom,pos,ref,alt,label; one per line)</label>
+                <textarea id="variantInputs" rows="5" placeholder="2,165300123,C,T,Pathogenic\n2,165300456,G,A,Benign"></textarea>
+            </div>
+            <button type="submit">Predict</button>
+        </form>
+
+        <form id="sequenceForm" class="hidden">
+            <div class="form-group">
+                <label for="sequenceInputs">Sequences (201bp, A/C/G/T only, with label; one per line, format: sequence,label)</label>
+                <textarea id="sequenceInputs" rows="5" placeholder="ACTG... (201bp),Pathogenic\nTGCA... (201bp),Benign"></textarea>
+            </div>
+            <button type="submit">Predict</button>
+        </form>
+
+        <div id="loading" class="hidden">
+            <p>Processing your request...</p>
+        </div>
+
+        <div id="error" class="error hidden"></div>
+
+        <div id="result" class="hidden">
+            <h2>Prediction Results</h2>
+            <div id="predictions"></div>
+        </div>
+    </main>
+
+    <script>
+        function toggleInputForm() {
+            const inputType = document.getElementById('inputType').value;
+            const variantForm = document.getElementById('variantForm');
+            const sequenceForm = document.getElementById('sequenceForm');
+            variantForm.classList.toggle('hidden', inputType !== 'variant');
+            sequenceForm.classList.toggle('hidden', inputType !== 'sequence');
+            clearResults();
+        }
+
+        function clearResults() {
+            document.getElementById('result').classList.add('hidden');
+            document.getElementById('error').classList.add('hidden');
+            document.getElementById('predictions').innerHTML = '';
+        }
+
+        function displayError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        document.getElementById('variantForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearResults();
+            document.getElementById('loading').classList.remove('hidden');
+            
+            try {
+                const inputText = document.getElementById('variantInputs').value.trim();
+                const lines = inputText.split('\n').map(s => s.trim()).filter(s => s);
+                
+                if (lines.length === 0) {
+                    displayError("Please enter at least one variant");
+                    return;
+                }
+                
+                const inputs = [];
+                for (const line of lines) {
+                    const [chrom, pos, ref, alt, label] = line.split(',').map(s => s.trim());
+                    inputs.push({ input_type: 'variant', chrom, pos, ref, alt, label });
+                }
+
+                const result = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(inputs)
+                });
+
+                const data = await result.json();
+                if (result.ok) {
+                    displayResults(data);
+                } else {
+                    displayError(data.error);
+                }
+            } catch (error) {
+                displayError('Error connecting to server. Please ensure the backend is running and try again. ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('sequenceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearResults();
+            document.getElementById('loading').classList.remove('hidden');
+            
+            try {
+                const inputText = document.getElementById('sequenceInputs').value.trim();
+                const lines = inputText.split('\n').map(s => s.trim()).filter(s => s);
+                
+                if (lines.length === 0) {
+                    displayError("Please enter at least one sequence");
+                    return;
+                }
+                
+                const inputs = [];
+                for (const line of lines) {
+                    const [sequence, label] = line.split(',').map(s => s.trim());
+                    inputs.push({ input_type: 'sequence', sequence, label });
+                }
+
+                const result = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(inputs)
+                });
+
+                const data = await result.json();
+                if (result.ok) {
+                    displayResults(data);
+                } else {
+                    displayError(data.error);
+                }
+            } catch (error) {
+                displayError('Error connecting to server. Please ensure the backend is running and try again. ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        });
+
+        function displayResults(result) {
+            const predictionsDiv = document.getElementById('predictions');
+            predictionsDiv.innerHTML = result.map((r, i) => 
+                `<p>Input ${i+1}: ${r.prediction} (Confidence: ${r.confidence.toFixed(4)})</p>`
+            ).join('');
+            document.getElementById('result').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
