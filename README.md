@@ -1,4 +1,22 @@
-# Pathogenicity Prediction using Graph Neural Networks (GNN)
+# 🔗 Web Interface + API Integration
+
+This project includes:
+- 🎯 **Flask Backend (`app.py`)**: A RESTful API that loads a pre-trained GNN model and serves prediction results for given genetic variants or sequences.
+- 🌐 **Frontend (`static/index.html`)**: A responsive web interface built with HTML/CSS + JavaScript (AJAX) for users to input variant/sequence data and visualize prediction results.
+- 🔄 The HTML form communicates with the Flask server via a `/predict` POST endpoint.
+
+To run locally:
+```bash
+python app.py
+```
+Then visit:
+```
+http://localhost:5000/
+```
+
+---
+
+# 🧬 Pathogenicity Prediction using Graph Neural Networks (GNN)
 
 ## 🧬 Project Overview
 
@@ -10,7 +28,7 @@ The goal is to support early detection of harmful mutations in genomic data, enh
 
 - **Graph Construction**: Gene sequences are represented as graphs, where nodes denote nucleotides or mutation positions, and edges represent their biological proximity or functional interaction.
 - **Model Used**: 
-  - Graph Convolutional Network (GCN)
+  - Graph Attention Network (GAT)
   - Input: Graphs from mutated genomic data
   - Output: Binary label – *Pathogenic* or *Benign*
 - **Loss Function**: Binary Cross Entropy
@@ -41,3 +59,19 @@ Comparisons are made with baseline models like:
 Install dependencies using pip:
 ```bash
 pip install -r requirements.txt
+```
+
+## 📁 Project Structure
+
+```
+project-root/
+├── app.py                  # Flask backend
+├── best_gat_model.pth      # Pretrained GAT model weights
+├── static/
+│   └── index.html          # Web interface for user input and results
+├── pathogenic_gnn.ipynb    # Notebook used for model training
+├── requirements.txt        # Dependencies for backend & model
+```
+
+---
+
